@@ -18,7 +18,7 @@ def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
     print(f'Analysis for {len(CBs)} common cells using method={map_method}')
 
     data = parse_molecule_info('molecule_info_10X.h5', CBs, N_genes)
-    assert np.all(data['umi_counts'].todense(), counts.todense())
+    assert np.all(data['umi_counts'].todense() == counts.todense())
     del counts
 
     gene_name = [str.split(b'_')[0].lower() for str in probe_name]
@@ -51,7 +51,7 @@ def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
             [data['umi_counts'][:, idx].argmax(axis=1) for idx in gene_idx]
         ).squeeze().T
 
-        max_umi_reads = np.array(
+        max_probe_umis = np.array(
             [data['umi_counts'][:, idx][np.arange(N_cells), max_idx]
              for (idx, max_idx) in zip(gene_idx, which_probe_max.T)]
         ).squeeze().T
