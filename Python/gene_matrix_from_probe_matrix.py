@@ -1,4 +1,6 @@
 import os
+import gzip
+import csv
 import numpy as np
 
 from utils import *
@@ -12,12 +14,12 @@ def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
         raise Exception(f'Unrecorgnized map_method: {map_method}')
 
     counts, CBs, probe_name = load_10x_h5_matrix(
-        'filtered_feature_bc_matrix_10X.h5')
+        f'{input_path}/filtered_feature_bc_matrix.h5')
     N_genes = len(probe_name)
     N_cells = len(CBs)
     print(f'Analysis for {len(CBs)} common cells using method={map_method}')
 
-    data = parse_molecule_info('molecule_info_10X.h5', CBs, N_genes)
+    data = parse_molecule_info(f'{input_path}/molecule_info.h5', CBs, N_genes)
     assert np.all(data['umi_counts'].todense() == counts.todense())
     del counts
 
@@ -61,8 +63,8 @@ def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
              for (idx, max_idx) in zip(gene_idx, which_probe_max.T)]
         ).squeeze().T
 
-        counts['by_gene_max_probe'] = max_probe_umis,
-        counts['which_probe_max'] = which_probe_max,
+        counts['by_gene_max_probe'] = max_probe_umis
+        counts['which_probe_max'] = which_probe_max
         counts['max_probe_reads'] = max_probe_reads
 
     else:
@@ -78,8 +80,44 @@ def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
                                                       which_probe_bulk_median]
 
         counts['by_median_bulk_probe'] = data['umi_counts'][:,
-                                                            which_probe_bulk_median],
-        counts['which_probe_bulk_median'] = which_probe_bulk_median,
+                                                            which_probe_bulk_median]
+        counts['which_probe_bulk_median'] = which_probe_bulk_median
         counts['bulk_median_reads'] = bulk_median_probe_reads
+
+    CBs = [elem.decode('utf-8') for elem in CBs]:
+    with gzip.open(f'{outdir}/barcodes.tsv.gz', 'wt') as fid: 
+        writer = csv.writer(fid)
+        for CB in CBs:
+            writer.writerow([CB])
+
+    gene_name = [elem.decode('utf-8') for elem in gene_name]:
+    with gzip.open(f'{outdir}/features.tsv.gz', 'wt') as fid: 
+        writer = csv.writer(fid, delimiter='\t')
+        for i in range(len(gene_name)):
+            writer.writerow([gene_name[i], gene_name[i], 'Gene Expression'])
+
+    if map_method == 'max_probe_in_cell':
+	r, c = counts['by_gene_max_probe'].nonzero()
+	v = np.asarray(counts['by_gene_max_probe'][(r, c)]).flatten()
+    else:
+	r, c = counts['by_median_bulk_probe'].nonzero()
+	v = np.asarray(counts['by_median_bulk_probe'][(r, c)]).flatten()
+
+    with gzip.open(f'{outdir}/matrix.mtx.gz', 'wt') as fid:
+	fid.write('%%MatrixMarket matrix coordinate integer general\n')
+	fid.write('%metadata_json: {"format_version": 2, "software_version": "3.1.0"}\n')
+	fid.write(f'{len(gene_name)} {len(CBs)} {len(v)}\n')
+	sorted_idx = np.lexsort((r, c)) # sort column first and then row
+	for i in sorted_idx:
+	    fid.write(f'{c[i]} {r[i]} {v[i]}\n')
+
+    _dict = {
+        'counts': counts,
+        'data': data,
+        'CBs': CBs,
+        'gene_name': gene_name,
+        'input_path': input_path,
+        'map_method': map_method,
+    }
 
     return counts, data, CBs, gene_name
