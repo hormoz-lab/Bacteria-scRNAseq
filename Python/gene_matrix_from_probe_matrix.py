@@ -78,7 +78,7 @@ def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
                                                       which_probe_bulk_median]
 
         counts['by_median_bulk_probe'] = data['umi_counts'][:,
-                                                            which_proobe_bulk_median],
+                                                            which_probe_bulk_median],
         counts['which_probe_bulk_median'] = which_probe_bulk_median,
         counts['bulk_median_reads'] = bulk_median_probe_reads
 
