@@ -100,3 +100,54 @@ def parse_molecule_info(h5_file, CBs, N_genes):
     }
 
     return out
+
+
+def save_bargraph(mat, outdir):
+
+    lx, ly = mat.shape
+    xpos = np.arange(0, lx, 1)
+    ypos = np.arange(0, ly, 1)
+    xpos, ypos = np.meshgrid(xpos, ypos)
+
+    values = np.linspace(0, 1., xpos.ravel().shape[0])
+    colors = cm.viridis(values)
+
+    xpos = xpos.flatten()
+    ypos = ypos.flatten()
+    zpos = np.zeros(lx*ly)
+    dx = 0.5 * np.ones_like(zpos)
+    dy = dx.copy()
+    dz = mat.flatten()
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = Axes3D(fig)
+
+    ax.bar3d(xpos, ypos, zpos, dx, dy, dz, color=colors)
+    ax.set_xlabel('Probe Umi Count', fontsize=14)
+    ax.set_ylabel('10X Umi Count', fontsize=14)
+    ax.set_zlabel('# of (CB,Probe) Entries with UMI Count', fontsize=14)
+    ax.set_title('Count Matrix Coincidence Analysis', fontsize=16)
+    fig.set_tight_layout(True)
+
+    plt.savefig(f'{outdir}/coincidence_analysis.png',
+                bbox_inches='tight', dpi=300)
+
+
+def _in2d(a, b):
+
+    a = np.array(a, dtype=int)
+    b = np.array(b, dtype=int)
+
+    a = np.ascontiguousarray(a)
+    b = np.ascontiguousarray(b)
+    void_dt = np.dtype((np.void, a.dtype.itemsize * a.shape[1]))
+    a = a.view(void_dt).ravel()
+    b = b.view(void_dt).ravel()
+
+    bool_ind = np.isin(a, b)
+    common = a[bool_ind]
+    [common_unique, common_inv] = np.unique(common, return_inverse=True)
+    [b_unique, b_ind] = np.unique(b, return_index=True)
+    common_ind = b_ind[np.isin(b_unique, common_unique, assume_unique=True)]
+
+    return bool_ind, common_ind[common_inv]
