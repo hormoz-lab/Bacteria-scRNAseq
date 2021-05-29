@@ -21,7 +21,7 @@ def analyze_UMI_coincidence(path_10X, path_probe, outdir):
     print(f'Analysis for {len(CBs)} common cells')
 
     tenX = parse_molecule_info(f'{path_10X}/molecule_info.h5', CBs, N_genes)
-    probe = parse_molecule_info(f'{path_probe}molecule_info.h5', CBs, N_genes)
+    probe = parse_molecule_info(f'{path_probe}/molecule_info.h5', CBs, N_genes)
 
     joint_ids = np.array(sorted(
         set(zip(tenX['barcode_id'], tenX['gene_id'])).union(
@@ -71,3 +71,23 @@ def populate_common(out, joint_ids):
     out['read_pop'] = read_pop
 
     return out
+
+
+def _in2d(a, b):
+
+    a = np.array(a, dtype=int)
+    b = np.array(b, dtype=int)
+
+    a = np.ascontiguousarray(a)
+    b = np.ascontiguousarray(b)
+    void_dt = np.dtype((np.void, a.dtype.itemsize * a.shape[1]))
+    a = a.view(void_dt).ravel()
+    b = b.view(void_dt).ravel()
+
+    bool_ind = np.isin(a, b)
+    common = a[bool_ind]
+    [common_unique, common_inv] = np.unique(common, return_inverse=True)
+    [b_unique, b_ind] = np.unique(b, return_index=True)
+    common_ind = b_ind[np.isin(b_unique, common_unique, assume_unique=True)]
+
+    return bool_ind, common_ind[common_inv]

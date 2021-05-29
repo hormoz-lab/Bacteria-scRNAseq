@@ -8,8 +8,7 @@ from utils import *
 
 def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
 
-    out_path = f'{input_path}/{outdir}'
-    assert not os.path.isdir(out_path), 'Output path already exists'
+    assert not os.path.isdir(outdir), 'Output path already exists'
 
     if map_method not in ['max_prob_in_cell', 'median_probe_in_bulk']:
         raise Exception(f'Unrecorgnized map_method: {map_method}')
@@ -85,16 +84,16 @@ def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
         counts['which_probe_bulk_median'] = which_probe_bulk_median
         counts['bulk_median_reads'] = bulk_median_probe_reads
 
-    os.mkdir(out_path)
+    os.makedirs(outdir)
 
     CBs = [elem.decode('utf-8') for elem in CBs]
-    with gzip.open(f'{out_path}/barcodes.tsv.gz', 'wt') as fid:
+    with gzip.open(f'{outdir}/barcodes.tsv.gz', 'wt') as fid:
         writer = csv.writer(fid)
         for CB in CBs:
             writer.writerow([CB])
 
     gene_name = [elem.decode('utf-8') for elem in gene_name]
-    with gzip.open(f'{out_path}/features.tsv.gz', 'wt') as fid:
+    with gzip.open(f'{outdir}/features.tsv.gz', 'wt') as fid:
         writer = csv.writer(fid, delimiter='\t')
         for i in range(len(gene_name)):
             writer.writerow([gene_name[i], gene_name[i], 'Gene Expression'])
@@ -106,7 +105,7 @@ def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
         r, c = counts['by_median_bulk_probe'].nonzero()
         v = np.asarray(counts['by_median_bulk_probe'][(r, c)]).flatten()
 
-    with gzip.open(f'{out_path}/matrix.mtx.gz', 'wt') as fid:
+    with gzip.open(f'{outdir}/matrix.mtx.gz', 'wt') as fid:
         fid.write('%%MatrixMarket matrix coordinate integer general\n')
         fid.write(
             '%metadata_json: {"format_version": 2, "software_version": "3.1.0"}\n')

@@ -104,6 +104,10 @@ def parse_molecule_info(h5_file, CBs, N_genes):
 
 def save_bargraph(mat, outdir):
 
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    from matplotlib import cm
+
     lx, ly = mat.shape
     xpos = np.arange(0, lx, 1)
     ypos = np.arange(0, ly, 1)
@@ -131,23 +135,3 @@ def save_bargraph(mat, outdir):
 
     plt.savefig(f'{outdir}/coincidence_analysis.png',
                 bbox_inches='tight', dpi=300)
-
-
-def _in2d(a, b):
-
-    a = np.array(a, dtype=int)
-    b = np.array(b, dtype=int)
-
-    a = np.ascontiguousarray(a)
-    b = np.ascontiguousarray(b)
-    void_dt = np.dtype((np.void, a.dtype.itemsize * a.shape[1]))
-    a = a.view(void_dt).ravel()
-    b = b.view(void_dt).ravel()
-
-    bool_ind = np.isin(a, b)
-    common = a[bool_ind]
-    [common_unique, common_inv] = np.unique(common, return_inverse=True)
-    [b_unique, b_ind] = np.unique(b, return_index=True)
-    common_ind = b_ind[np.isin(b_unique, common_unique, assume_unique=True)]
-
-    return bool_ind, common_ind[common_inv]
