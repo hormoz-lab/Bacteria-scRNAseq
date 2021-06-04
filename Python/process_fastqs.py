@@ -3,6 +3,7 @@ import gzip
 import shutil
 import time
 import pickle
+import re
 from subprocess import check_output
 from datetime import timedelta
 
@@ -28,7 +29,7 @@ def process_fastqs(input_fastq, outdir, tenX_version):
     os.makedirs(outdir)
     os.makedirs(f'{outdir}/10X')
     os.makedirs(f'{outdir}/Probe')
-    os.makedirs('meta')
+    os.makedirs(f'{outdir}/meta')
 
     print(f'Processing {input_fastq}')
 
@@ -59,7 +60,7 @@ def process_fastqs(input_fastq, outdir, tenX_version):
 
     command = f'wc -l {input_fastq}'
     N_reads = int(int(check_output(command, shell=True).split()[0])/4)
-    block_size = 1e7
+    block_size = 1e6
     N_blocks = int(np.ceil(N_reads/block_size))
     print(f'Splitting {N_reads} over {N_blocks}')
 
@@ -132,7 +133,7 @@ def process_fastqs(input_fastq, outdir, tenX_version):
         'sc': sc,
     }
 
-    pickle.dump(metric, open('meta/meta.pkl', 'wb'))
+    pickle.dump(metric, open(f'{outdir}/meta.pkl', 'wb'))
 
     time_elapsed = time.time() - start_time
     print(f'FASTQ processed in: {timedelta(seconds=time_elapsed)}')
@@ -164,18 +165,22 @@ def process_per_block(records, Extender, L_CB, L_UMI, L_ext, outdir):
     S = S[full_seq]
 
     print('Aligning...')
-    sc, al = [], []
+    sc, al_upstream = [], []
     for s in S:
         result = parasail.sg_trace(s._data, Extender, 8, 8, parasail.nuc44)
         sc.append(0.277316 * result.score)
-        al.append(result.cigar.decode.split(b'I')[0])
+        al_upstream.append(result.cigar.decode.split(b'=')[0])
     extender_found = np.where(np.array(sc) >= 17)[0]
-    al = np.array(al)[extender_found]
+    al_upstream = np.array(al_upstream)[extender_found]
     S = S[extender_found]
     extender_found = full_seq[extender_found]
-
+    
     print('Trimming by extender...')
-    probe_umi_end_pos = np.array([int(match) for match in al])
+    probe_umi_end_pos = np.array(
+        [sum([int(x) for x in re.split(b'(\d+)', al) if x.isdigit()][:-1])
+         for al in al_upstream]
+    )
+    
     # Should be a polyT region separating 10X (CB/UMI) and Probe UMI
     probe_mask = np.where(probe_umi_end_pos >= L_CB + 2*L_UMI)[0]
     S = S[probe_mask]
@@ -259,3 +264,5 @@ def process_per_block(records, Extender, L_CB, L_UMI, L_ext, outdir):
     }
 
     return L_orig, masks, probe_umi_end_pos, sc
+
+
