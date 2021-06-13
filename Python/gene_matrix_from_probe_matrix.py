@@ -10,7 +10,7 @@ def gene_matrix_from_probe_matrix(input_path, outdir, map_method):
 
     assert not os.path.isdir(outdir), 'Output path already exists'
 
-    if map_method not in ['max_prob_in_cell', 'median_probe_in_bulk']:
+    if map_method not in ['max_probe_in_cell', 'median_probe_in_bulk']:
         raise Exception(f'Unrecorgnized map_method: {map_method}')
 
     counts, CBs, probe_name = load_10x_h5_matrix(
